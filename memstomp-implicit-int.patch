@@ -1,0 +1,372 @@
+diff -Nrup a/testsuite/memstomp.nooverlap/memccpy.c b/testsuite/memstomp.nooverlap/memccpy.c
+--- a/testsuite/memstomp.nooverlap/memccpy.c	2015-05-26 19:20:36.001837645 -0600
++++ b/testsuite/memstomp.nooverlap/memccpy.c	2015-05-26 19:21:12.500043292 -0600
+@@ -12,6 +12,8 @@ TYPE arr2[10] = {0};
+ TYPE *p1 = &arr1[0];
+ TYPE *p2 = &arr2[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   MEMCCPY (p1, p2, -1, count);
+diff -Nrup a/testsuite/memstomp.nooverlap/memcpy.c b/testsuite/memstomp.nooverlap/memcpy.c
+--- a/testsuite/memstomp.nooverlap/memcpy.c	2015-05-26 19:20:36.001837645 -0600
++++ b/testsuite/memstomp.nooverlap/memcpy.c	2015-05-26 19:21:19.082900022 -0600
+@@ -12,6 +12,8 @@ TYPE arr2[10] = {0};
+ TYPE *p1 = &arr1[0];
+ TYPE *p2 = &arr2[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   MEMCPY (p1, p2, count);
+diff -Nrup a/testsuite/memstomp.nooverlap/strcpy.c b/testsuite/memstomp.nooverlap/strcpy.c
+--- a/testsuite/memstomp.nooverlap/strcpy.c	2015-05-26 19:20:36.001837645 -0600
++++ b/testsuite/memstomp.nooverlap/strcpy.c	2015-05-26 19:21:50.617213704 -0600
+@@ -11,6 +11,8 @@ char arr1[32] = "this is a test";
+ char arr2[32] = "this is a test";
+ char *p1 = &arr1[0];
+ char *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   STRCPY (p2, p1);
+diff -Nrup a/testsuite/memstomp.nooverlap/strncpy.c b/testsuite/memstomp.nooverlap/strncpy.c
+--- a/testsuite/memstomp.nooverlap/strncpy.c	2015-05-26 19:20:36.001837645 -0600
++++ b/testsuite/memstomp.nooverlap/strncpy.c	2015-05-26 19:21:54.929119859 -0600
+@@ -11,6 +11,8 @@ char arr1[32] = "this is a test";
+ char arr2[32] = "this is a test";
+ char *p1 = &arr1[0];
+ char *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   STRNCPY (p1, p2, strlen (p2));
+diff -Nrup a/testsuite/memstomp.nooverlap/wcscpy.c b/testsuite/memstomp.nooverlap/wcscpy.c
+--- a/testsuite/memstomp.nooverlap/wcscpy.c	2015-05-26 19:20:36.002837623 -0600
++++ b/testsuite/memstomp.nooverlap/wcscpy.c	2015-05-26 19:21:58.928032826 -0600
+@@ -11,6 +11,8 @@ wchar_t arr1[32] = L"this is a test";
+ wchar_t arr2[32] = L"this is a test";
+ wchar_t *p1 = &arr1[0];
+ wchar_t *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   WCSCPY (p1, p2);
+diff -Nrup a/testsuite/memstomp.nooverlap/wcsncpy.c b/testsuite/memstomp.nooverlap/wcsncpy.c
+--- a/testsuite/memstomp.nooverlap/wcsncpy.c	2015-05-26 19:20:36.002837623 -0600
++++ b/testsuite/memstomp.nooverlap/wcsncpy.c	2015-05-26 19:22:03.184940178 -0600
+@@ -11,6 +11,8 @@ wchar_t arr1[32] = L"this is a test";
+ wchar_t arr2[32] = L"this is a test";
+ wchar_t *p1 = &arr1[0];
+ wchar_t *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   WCSNCPY (p1, p2, wcslen (p2));
+diff -Nrup a/testsuite/memstomp.null/memccpy.c b/testsuite/memstomp.null/memccpy.c
+--- a/testsuite/memstomp.null/memccpy.c	2015-05-26 19:20:36.010837449 -0600
++++ b/testsuite/memstomp.null/memccpy.c	2015-05-26 19:22:08.530823830 -0600
+@@ -12,6 +12,8 @@ TYPE arr2[10] = {0};
+ TYPE *p1 = &arr1[0];
+ TYPE *p2 = &arr2[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   MEMCCPY (NULL, NULL, -1, 0);
+diff -Nrup a/testsuite/memstomp.null/memcpy.c b/testsuite/memstomp.null/memcpy.c
+--- a/testsuite/memstomp.null/memcpy.c	2015-05-26 19:20:36.011837427 -0600
++++ b/testsuite/memstomp.null/memcpy.c	2015-05-26 19:22:13.504715577 -0600
+@@ -12,6 +12,8 @@ TYPE arr2[10] = {0};
+ TYPE *p1 = &arr1[0];
+ TYPE *p2 = &arr2[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   return MEMCPY (NULL, NULL, 0) == 0 ;
+diff -Nrup a/testsuite/memstomp.null/memmem.c b/testsuite/memstomp.null/memmem.c
+--- a/testsuite/memstomp.null/memmem.c	2015-05-26 19:20:36.011837427 -0600
++++ b/testsuite/memstomp.null/memmem.c	2015-05-26 19:22:16.232656205 -0600
+@@ -12,6 +12,8 @@ TYPE arr2[10] = {0};
+ TYPE *p1 = &arr1[0];
+ TYPE *p2 = &arr2[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   return MEMMEM (NULL, 0, NULL, 0) == 0 ;
+diff -Nrup a/testsuite/memstomp.null/memset.c b/testsuite/memstomp.null/memset.c
+--- a/testsuite/memstomp.null/memset.c	2015-05-26 19:20:36.011837427 -0600
++++ b/testsuite/memstomp.null/memset.c	2015-05-26 19:22:22.800513262 -0600
+@@ -12,6 +12,8 @@ TYPE arr2[10] = {0};
+ TYPE *p1 = &arr1[0];
+ TYPE *p2 = &arr2[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   return MEMSET (NULL, -1, 0) == 0;
+diff -Nrup a/testsuite/memstomp.null/rawmemchr.c b/testsuite/memstomp.null/rawmemchr.c
+--- a/testsuite/memstomp.null/rawmemchr.c	2015-05-26 19:20:36.011837427 -0600
++++ b/testsuite/memstomp.null/rawmemchr.c	2015-05-26 19:22:25.857446730 -0600
+@@ -12,6 +12,8 @@ TYPE arr2[10] = {0};
+ TYPE *p1 = &arr1[0];
+ TYPE *p2 = &arr2[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   return RAWMEMCHR (NULL, 0) == 0;
+diff -Nrup a/testsuite/memstomp.null/strcmp.c b/testsuite/memstomp.null/strcmp.c
+--- a/testsuite/memstomp.null/strcmp.c	2015-05-26 19:20:36.012837405 -0600
++++ b/testsuite/memstomp.null/strcmp.c	2015-05-26 19:22:37.049203151 -0600
+@@ -11,6 +11,8 @@ char arr1[32] = "this is a test";
+ char arr2[32] = "this is a test";
+ char *p1 = &arr1[0];
+ char *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   return STRCMP (NULL, NULL) == 0;
+diff -Nrup a/testsuite/memstomp.null/strcoll_l.c b/testsuite/memstomp.null/strcoll_l.c
+--- a/testsuite/memstomp.null/strcoll_l.c	2015-05-26 19:20:36.012837405 -0600
++++ b/testsuite/memstomp.null/strcoll_l.c	2015-05-26 19:22:41.097115051 -0600
+@@ -11,6 +11,8 @@ char arr1[32] = "this is a test";
+ char arr2[32] = "this is a test";
+ char *p1 = &arr1[0];
+ char *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   return STRCMP (NULL, NULL, NULL);
+diff -Nrup a/testsuite/memstomp.null/strcpy.c b/testsuite/memstomp.null/strcpy.c
+--- a/testsuite/memstomp.null/strcpy.c	2015-05-26 19:20:36.012837405 -0600
++++ b/testsuite/memstomp.null/strcpy.c	2015-05-26 19:22:44.695036746 -0600
+@@ -11,6 +11,8 @@ char arr1[32] = "this is a test";
+ char arr2[32] = "this is a test";
+ char *p1 = &arr1[0];
+ char *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   STRCPY (NULL, NULL);
+diff -Nrup a/testsuite/memstomp.null/strlen.c b/testsuite/memstomp.null/strlen.c
+--- a/testsuite/memstomp.null/strlen.c	2015-05-26 19:20:36.012837405 -0600
++++ b/testsuite/memstomp.null/strlen.c	2015-05-26 19:22:49.456933107 -0600
+@@ -11,6 +11,8 @@ char arr1[32] = "this is a test";
+ char arr2[32] = "this is a test";
+ char *p1 = &arr1[0];
+ char *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   return STRLEN (NULL) == 0;
+diff -Nrup a/testsuite/memstomp.null/strncmp.c b/testsuite/memstomp.null/strncmp.c
+--- a/testsuite/memstomp.null/strncmp.c	2015-05-26 19:20:36.012837405 -0600
++++ b/testsuite/memstomp.null/strncmp.c	2015-05-26 19:22:53.383847641 -0600
+@@ -11,6 +11,8 @@ char arr1[32] = "this is a test";
+ char arr2[32] = "this is a test";
+ char *p1 = &arr1[0];
+ char *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   return STRNCMP (NULL, NULL, 0);
+diff -Nrup a/testsuite/memstomp.null/strncpy.c b/testsuite/memstomp.null/strncpy.c
+--- a/testsuite/memstomp.null/strncpy.c	2015-05-26 19:20:36.012837405 -0600
++++ b/testsuite/memstomp.null/strncpy.c	2015-05-26 19:22:56.135787748 -0600
+@@ -11,6 +11,8 @@ char arr1[32] = "this is a test";
+ char arr2[32] = "this is a test";
+ char *p1 = &arr1[0];
+ char *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   STRNCPY (NULL, NULL, 0);
+diff -Nrup a/testsuite/memstomp.null/strtok_r.c b/testsuite/memstomp.null/strtok_r.c
+--- a/testsuite/memstomp.null/strtok_r.c	2015-05-26 19:20:36.013837384 -0600
++++ b/testsuite/memstomp.null/strtok_r.c	2015-05-26 19:23:04.464606478 -0600
+@@ -12,6 +12,8 @@ TYPE arr2[10] = {0};
+ TYPE *p1 = &arr1[0];
+ TYPE *p2 = &arr2[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   return STRTOK_R (NULL, NULL, NULL) == 0 ;
+diff -Nrup a/testsuite/memstomp.null/strxfrm_l.c b/testsuite/memstomp.null/strxfrm_l.c
+--- a/testsuite/memstomp.null/strxfrm_l.c	2015-05-26 19:20:36.013837384 -0600
++++ b/testsuite/memstomp.null/strxfrm_l.c	2015-05-26 19:23:10.319479051 -0600
+@@ -11,6 +11,8 @@ char arr1[32] = "this is a test";
+ char arr2[32] = "this is a test";
+ char *p1 = &arr1[0];
+ char *p2 = &arr2[1];
++
++int
+ main ()
+ {
+   return STRCMP (NULL, NULL, 0, NULL);
+diff -Nrup a/testsuite/memstomp.overlap/memccpy-2.c b/testsuite/memstomp.overlap/memccpy-2.c
+--- a/testsuite/memstomp.overlap/memccpy-2.c	2015-05-26 19:20:36.002837623 -0600
++++ b/testsuite/memstomp.overlap/memccpy-2.c	2015-05-26 19:23:17.583320672 -0600
+@@ -11,6 +11,8 @@ TYPE arr[10] = {0};
+ TYPE *p1 = &arr[0];
+ TYPE *p2 = &arr[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   MEMCCPY (p2, p1, -1, count);
+diff -Nrup a/testsuite/memstomp.overlap/memccpy.c b/testsuite/memstomp.overlap/memccpy.c
+--- a/testsuite/memstomp.overlap/memccpy.c	2015-05-26 19:20:36.002837623 -0600
++++ b/testsuite/memstomp.overlap/memccpy.c	2015-05-26 19:23:20.623254323 -0600
+@@ -11,6 +11,8 @@ TYPE arr[10] = {0};
+ TYPE *p1 = &arr[0];
+ TYPE *p2 = &arr[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   MEMCCPY (p1, p2, -1, count);
+diff -Nrup a/testsuite/memstomp.overlap/memcpy-2.c b/testsuite/memstomp.overlap/memcpy-2.c
+--- a/testsuite/memstomp.overlap/memcpy-2.c	2015-05-26 19:20:36.002837623 -0600
++++ b/testsuite/memstomp.overlap/memcpy-2.c	2015-05-26 19:23:23.823184481 -0600
+@@ -11,6 +11,8 @@ TYPE arr[10] = {0};
+ TYPE *p1 = &arr[0];
+ TYPE *p2 = &arr[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   MEMCPY (p2, p1, count);
+diff -Nrup a/testsuite/memstomp.overlap/memcpy.c b/testsuite/memstomp.overlap/memcpy.c
+--- a/testsuite/memstomp.overlap/memcpy.c	2015-05-26 19:20:36.002837623 -0600
++++ b/testsuite/memstomp.overlap/memcpy.c	2015-05-26 19:23:26.559124767 -0600
+@@ -11,6 +11,8 @@ TYPE arr[10] = {0};
+ TYPE *p1 = &arr[0];
+ TYPE *p2 = &arr[1];
+ size_t count = 9;
++
++int
+ main ()
+ {
+   MEMCPY (p1, p2, count);
+diff -Nrup a/testsuite/memstomp.overlap/strcpy-2.c b/testsuite/memstomp.overlap/strcpy-2.c
+--- a/testsuite/memstomp.overlap/strcpy-2.c	2015-05-26 19:20:36.003837601 -0600
++++ b/testsuite/memstomp.overlap/strcpy-2.c	2015-05-26 19:23:37.055895666 -0600
+@@ -10,6 +10,8 @@
+ char arr[32] = "this is a test";
+ char *p1 = &arr[0];
+ char *p2 = &arr[1];
++
++int
+ main ()
+ {
+   STRCPY (p1, p2);
+diff -Nrup a/testsuite/memstomp.overlap/strcpy.c b/testsuite/memstomp.overlap/strcpy.c
+--- a/testsuite/memstomp.overlap/strcpy.c	2015-05-26 19:20:36.003837601 -0600
++++ b/testsuite/memstomp.overlap/strcpy.c	2015-05-26 19:23:40.231826349 -0600
+@@ -10,6 +10,8 @@
+ char arr[32] = "this is a test";
+ char *p1 = &arr[0];
+ char *p2 = &arr[1];
++
++int
+ main ()
+ {
+   STRCPY (p2, p1);
+diff -Nrup a/testsuite/memstomp.overlap/strncpy-2.c b/testsuite/memstomp.overlap/strncpy-2.c
+--- a/testsuite/memstomp.overlap/strncpy-2.c	2015-05-26 19:20:36.003837601 -0600
++++ b/testsuite/memstomp.overlap/strncpy-2.c	2015-05-26 19:23:45.158718815 -0600
+@@ -10,6 +10,8 @@
+ char arr[32] = "this is a test";
+ char *p1 = &arr[0];
+ char *p2 = &arr[1];
++
++int
+ main ()
+ {
+   STRNCPY (p2, p1, strlen (p1));
+diff -Nrup a/testsuite/memstomp.overlap/strncpy.c b/testsuite/memstomp.overlap/strncpy.c
+--- a/testsuite/memstomp.overlap/strncpy.c	2015-05-26 19:20:36.003837601 -0600
++++ b/testsuite/memstomp.overlap/strncpy.c	2015-05-26 19:23:48.311650000 -0600
+@@ -10,6 +10,8 @@
+ char arr[32] = "this is a test";
+ char *p1 = &arr[0];
+ char *p2 = &arr[1];
++
++int
+ main ()
+ {
+   STRNCPY (p1, p2, strlen (p2));
+diff -Nrup a/testsuite/memstomp.overlap/wcscpy-2.c b/testsuite/memstomp.overlap/wcscpy-2.c
+--- a/testsuite/memstomp.overlap/wcscpy-2.c	2015-05-26 19:20:36.003837601 -0600
++++ b/testsuite/memstomp.overlap/wcscpy-2.c	2015-05-26 19:23:53.167544016 -0600
+@@ -10,6 +10,8 @@
+ wchar_t arr[32] = L"this is a test";
+ wchar_t *p1 = &arr[0];
+ wchar_t *p2 = &arr[1];
++
++int
+ main ()
+ {
+   WCSCPY (p2, p1);
+diff -Nrup a/testsuite/memstomp.overlap/wcscpy.c b/testsuite/memstomp.overlap/wcscpy.c
+--- a/testsuite/memstomp.overlap/wcscpy.c	2015-05-26 19:20:36.003837601 -0600
++++ b/testsuite/memstomp.overlap/wcscpy.c	2015-05-26 19:23:56.070480657 -0600
+@@ -10,6 +10,8 @@
+ wchar_t arr[32] = L"this is a test";
+ wchar_t *p1 = &arr[0];
+ wchar_t *p2 = &arr[1];
++
++int
+ main ()
+ {
+   WCSCPY (p1, p2);
+diff -Nrup a/testsuite/memstomp.overlap/wcsncpy-2.c b/testsuite/memstomp.overlap/wcsncpy-2.c
+--- a/testsuite/memstomp.overlap/wcsncpy-2.c	2015-05-26 19:20:36.003837601 -0600
++++ b/testsuite/memstomp.overlap/wcsncpy-2.c	2015-05-26 19:24:00.279388794 -0600
+@@ -10,6 +10,8 @@
+ wchar_t arr[32] = L"this is a test";
+ wchar_t *p1 = &arr[0];
+ wchar_t *p2 = &arr[1];
++
++int
+ main ()
+ {
+   WCSNCPY (p2, p1, wcslen (p2));
+diff -Nrup a/testsuite/memstomp.overlap/wcsncpy.c b/testsuite/memstomp.overlap/wcsncpy.c
+--- a/testsuite/memstomp.overlap/wcsncpy.c	2015-05-26 19:20:36.003837601 -0600
++++ b/testsuite/memstomp.overlap/wcsncpy.c	2015-05-26 19:24:03.222324562 -0600
+@@ -10,6 +10,8 @@
+ wchar_t arr[32] = L"this is a test";
+ wchar_t *p1 = &arr[0];
+ wchar_t *p2 = &arr[1];
++
++int
+ main ()
+ {
+   WCSNCPY (p1, p2, wcslen (p2));

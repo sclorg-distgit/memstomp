@@ -1,0 +1,751 @@
+diff -Nrup a/Makefile.am b/Makefile.am
+--- a/Makefile.am	2011-03-30 21:27:19.000000000 -0600
++++ b/Makefile.am	2013-03-11 15:31:08.909891995 -0600
+@@ -86,3 +86,24 @@ dist-gzip:
+ 	(cd $(srcdir); git archive --prefix=memstomp-$(VERSION)/ --format=tar HEAD) | gzip > memstomp-$(VERSION).tar.gz
+ 
+ ACLOCAL_AMFLAGS = -I m4
++
++check-DEJAGNU: site.exp
++	if [ -d testsuite ]; then \
++	  true; \
++	else \
++	  mkdir testsuite; \
++	fi
++	rm -f testsuite/site.exp
++	cp site.exp testsuite/site.exp
++	rootme=`pwd`; export rootme; \
++	srcdir=`cd ${srcdir}; pwd` ; export srcdir ; \
++	LC_ALL=C; export LC_ALL; \
++	EXPECT=${EXPECT} ; export EXPECT ; \
++	runtest=$(RUNTEST); \
++	cd testsuite; \
++	if $(SHELL) -c "$$runtest --version" > /dev/null 2>&1; then \
++	  $$runtest --tool $(DEJATOOL) --srcdir $${srcdir}/testsuite \
++		$(RUNTESTFLAGS); \
++	else echo "WARNING: could not find \`runtest'" 1>&2; :;\
++	fi
++
+diff -Nrup a/configure.ac b/configure.ac
+--- a/configure.ac	2011-03-30 21:27:19.000000000 -0600
++++ b/configure.ac	2013-03-11 15:27:32.812194998 -0600
+@@ -25,7 +25,7 @@ AC_CONFIG_SRCDIR([memstomp.c])
+ AC_CONFIG_HEADERS([config.h])
+ AC_CONFIG_MACRO_DIR(m4)
+ 
+-AM_INIT_AUTOMAKE([foreign 1.10 -Wall -Wno-portability tar-pax])
++AM_INIT_AUTOMAKE([foreign 1.10 -Wall -Wno-portability tar-pax dejagnu])
+ 
+ AC_SUBST(PACKAGE_URL, [http://wcohen.fedorapeople.org/git/memstomp/])
+ 
+diff -Nrup a/testsuite/memstomp.nooverlap/memccpy.c b/testsuite/memstomp.nooverlap/memccpy.c
+--- a/testsuite/memstomp.nooverlap/memccpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/memccpy.c	2013-03-11 14:13:05.000000000 -0600
+@@ -0,0 +1,20 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef MEMCCPY
++#define MEMCCPY memccpy
++#define TYPE char
++#endif
++
++TYPE arr1[10] = {0};
++TYPE arr2[10] = {0};
++TYPE *p1 = &arr1[0];
++TYPE *p2 = &arr2[1];
++size_t count = 9;
++main ()
++{
++  MEMCCPY (p1, p2, -1, count);
++}
++
++
+diff -Nrup a/testsuite/memstomp.nooverlap/memcpy.c b/testsuite/memstomp.nooverlap/memcpy.c
+--- a/testsuite/memstomp.nooverlap/memcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/memcpy.c	2013-03-11 14:12:57.000000000 -0600
+@@ -0,0 +1,20 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef MEMCPY
++#define MEMCPY memcpy
++#define TYPE char
++#endif
++
++TYPE arr1[10] = {0};
++TYPE arr2[10] = {0};
++TYPE *p1 = &arr1[0];
++TYPE *p2 = &arr2[1];
++size_t count = 9;
++main ()
++{
++  MEMCPY (p1, p2, count);
++}
++
++
+diff -Nrup a/testsuite/memstomp.nooverlap/mempcpy.c b/testsuite/memstomp.nooverlap/mempcpy.c
+--- a/testsuite/memstomp.nooverlap/mempcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/mempcpy.c	2013-03-11 13:54:25.000000000 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY mempcpy
++#define TYPE char
++#include "memcpy.c"
+diff -Nrup a/testsuite/memstomp.nooverlap/stpcpy.c b/testsuite/memstomp.nooverlap/stpcpy.c
+--- a/testsuite/memstomp.nooverlap/stpcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/stpcpy.c	2013-03-11 13:38:53.000000000 -0600
+@@ -0,0 +1,2 @@
++#define STRCPY stpcpy
++#include "strcpy.c"
+diff -Nrup a/testsuite/memstomp.nooverlap/stpncpy.c b/testsuite/memstomp.nooverlap/stpncpy.c
+--- a/testsuite/memstomp.nooverlap/stpncpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/stpncpy.c	2013-03-11 13:38:53.000000000 -0600
+@@ -0,0 +1,2 @@
++#define STRNCPY stpncpy
++#include "strncpy.c"
+diff -Nrup a/testsuite/memstomp.nooverlap/strcat.c b/testsuite/memstomp.nooverlap/strcat.c
+--- a/testsuite/memstomp.nooverlap/strcat.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/strcat.c	2013-03-11 13:38:53.000000000 -0600
+@@ -0,0 +1,2 @@
++#define STRCPY strcat
++#include "strcpy.c"
+diff -Nrup a/testsuite/memstomp.nooverlap/strcpy.c b/testsuite/memstomp.nooverlap/strcpy.c
+--- a/testsuite/memstomp.nooverlap/strcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/strcpy.c	2013-03-11 14:01:12.000000000 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRCPY
++#define STRCPY strcpy
++#endif
++
++
++char arr1[32] = "this is a test";
++char arr2[32] = "this is a test";
++char *p1 = &arr1[0];
++char *p2 = &arr2[1];
++main ()
++{
++  STRCPY (p2, p1);
++}
++
++
+diff -Nrup a/testsuite/memstomp.nooverlap/strncat.c b/testsuite/memstomp.nooverlap/strncat.c
+--- a/testsuite/memstomp.nooverlap/strncat.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/strncat.c	2013-03-11 13:38:53.000000000 -0600
+@@ -0,0 +1,2 @@
++#define STRNCPY strncat
++#include "strncpy.c"
+diff -Nrup a/testsuite/memstomp.nooverlap/strncpy.c b/testsuite/memstomp.nooverlap/strncpy.c
+--- a/testsuite/memstomp.nooverlap/strncpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/strncpy.c	2013-03-11 14:00:47.000000000 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRNCPY
++#define STRNCPY strncpy
++#endif
++
++
++char arr1[32] = "this is a test";
++char arr2[32] = "this is a test";
++char *p1 = &arr1[0];
++char *p2 = &arr2[1];
++main ()
++{
++  STRNCPY (p1, p2, strlen (p2));
++}
++
++
+diff -Nrup a/testsuite/memstomp.nooverlap/wcscat.c b/testsuite/memstomp.nooverlap/wcscat.c
+--- a/testsuite/memstomp.nooverlap/wcscat.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/wcscat.c	2013-03-11 13:38:53.000000000 -0600
+@@ -0,0 +1,2 @@
++#define WCSCPY wcscat
++#include "wcscpy.c"
+diff -Nrup a/testsuite/memstomp.nooverlap/wcscpy.c b/testsuite/memstomp.nooverlap/wcscpy.c
+--- a/testsuite/memstomp.nooverlap/wcscpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/wcscpy.c	2013-03-11 14:01:22.000000000 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef WCSCPY
++#define WCSCPY wcscpy
++#endif
++
++
++wchar_t arr1[32] = L"this is a test";
++wchar_t arr2[32] = L"this is a test";
++wchar_t *p1 = &arr1[0];
++wchar_t *p2 = &arr2[1];
++main ()
++{
++  WCSCPY (p1, p2);
++}
++
++
+diff -Nrup a/testsuite/memstomp.nooverlap/wcsncat.c b/testsuite/memstomp.nooverlap/wcsncat.c
+--- a/testsuite/memstomp.nooverlap/wcsncat.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/wcsncat.c	2013-03-11 13:38:53.000000000 -0600
+@@ -0,0 +1,2 @@
++#define WCSNCPY wcsncat
++#include "wcsncpy.c"
+diff -Nrup a/testsuite/memstomp.nooverlap/wcsncpy.c b/testsuite/memstomp.nooverlap/wcsncpy.c
+--- a/testsuite/memstomp.nooverlap/wcsncpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/wcsncpy.c	2013-03-11 14:01:26.000000000 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef WCSNCPY
++#define WCSNCPY wcsncpy
++#endif
++
++
++wchar_t arr1[32] = L"this is a test";
++wchar_t arr2[32] = L"this is a test";
++wchar_t *p1 = &arr1[0];
++wchar_t *p2 = &arr2[1];
++main ()
++{
++  WCSNCPY (p1, p2, wcslen (p2));
++}
++
++
+diff -Nrup a/testsuite/memstomp.nooverlap/wmemcpy.c b/testsuite/memstomp.nooverlap/wmemcpy.c
+--- a/testsuite/memstomp.nooverlap/wmemcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/wmemcpy.c	2013-03-11 13:54:32.000000000 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY wmemcpy
++#define TYPE wchar_t
++#include "memcpy.c"
+diff -Nrup a/testsuite/memstomp.nooverlap/wmempcpy.c b/testsuite/memstomp.nooverlap/wmempcpy.c
+--- a/testsuite/memstomp.nooverlap/wmempcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.nooverlap/wmempcpy.c	2013-03-11 13:54:38.000000000 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY wmempcpy
++#define TYPE wchar_t
++#include "memcpy.c"
+diff -Nrup a/testsuite/memstomp.overlap/memccpy-2.c b/testsuite/memstomp.overlap/memccpy-2.c
+--- a/testsuite/memstomp.overlap/memccpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/memccpy-2.c	2013-03-11 14:12:34.000000000 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef MEMCCPY
++#define MEMCCPY memccpy
++#define TYPE char
++#endif
++
++TYPE arr[10] = {0};
++TYPE *p1 = &arr[0];
++TYPE *p2 = &arr[1];
++size_t count = 9;
++main ()
++{
++  MEMCCPY (p2, p1, -1, count);
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/memccpy.c b/testsuite/memstomp.overlap/memccpy.c
+--- a/testsuite/memstomp.overlap/memccpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/memccpy.c	2013-03-11 14:12:41.000000000 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef MEMCCPY
++#define MEMCCPY memccpy
++#define TYPE char
++#endif
++
++TYPE arr[10] = {0};
++TYPE *p1 = &arr[0];
++TYPE *p2 = &arr[1];
++size_t count = 9;
++main ()
++{
++  MEMCCPY (p1, p2, -1, count);
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/memcpy-2.c b/testsuite/memstomp.overlap/memcpy-2.c
+--- a/testsuite/memstomp.overlap/memcpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/memcpy-2.c	2013-03-11 14:12:26.000000000 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef MEMCPY
++#define MEMCPY memcpy
++#define TYPE char
++#endif
++
++TYPE arr[10] = {0};
++TYPE *p1 = &arr[0];
++TYPE *p2 = &arr[1];
++size_t count = 9;
++main ()
++{
++  MEMCPY (p2, p1, count);
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/memcpy.c b/testsuite/memstomp.overlap/memcpy.c
+--- a/testsuite/memstomp.overlap/memcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/memcpy.c	2013-03-11 14:12:20.000000000 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef MEMCPY
++#define MEMCPY memcpy
++#define TYPE char
++#endif
++
++TYPE arr[10] = {0};
++TYPE *p1 = &arr[0];
++TYPE *p2 = &arr[1];
++size_t count = 9;
++main ()
++{
++  MEMCPY (p1, p2, count);
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/mempcpy-2.c b/testsuite/memstomp.overlap/mempcpy-2.c
+--- a/testsuite/memstomp.overlap/mempcpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/mempcpy-2.c	2013-03-11 13:52:51.000000000 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY mempcpy
++#define TYPE char
++#include "memcpy-2.c"
+diff -Nrup a/testsuite/memstomp.overlap/mempcpy.c b/testsuite/memstomp.overlap/mempcpy.c
+--- a/testsuite/memstomp.overlap/mempcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/mempcpy.c	2013-03-11 13:53:10.000000000 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY mempcpy
++#define TYPE char
++#include "memcpy.c"
+diff -Nrup a/testsuite/memstomp.overlap/stpcpy-2.c b/testsuite/memstomp.overlap/stpcpy-2.c
+--- a/testsuite/memstomp.overlap/stpcpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/stpcpy-2.c	2013-03-11 13:26:50.000000000 -0600
+@@ -0,0 +1,2 @@
++#define STRCPY stpcpy
++#include "strcpy-2.c"
+diff -Nrup a/testsuite/memstomp.overlap/stpcpy.c b/testsuite/memstomp.overlap/stpcpy.c
+--- a/testsuite/memstomp.overlap/stpcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/stpcpy.c	2013-03-05 15:36:43.000000000 -0700
+@@ -0,0 +1,2 @@
++#define STRCPY stpcpy
++#include "strcpy.c"
+diff -Nrup a/testsuite/memstomp.overlap/stpncpy-2.c b/testsuite/memstomp.overlap/stpncpy-2.c
+--- a/testsuite/memstomp.overlap/stpncpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/stpncpy-2.c	2013-03-11 13:27:02.000000000 -0600
+@@ -0,0 +1,2 @@
++#define STRNCPY stpncpy
++#include "strncpy-2.c"
+diff -Nrup a/testsuite/memstomp.overlap/stpncpy.c b/testsuite/memstomp.overlap/stpncpy.c
+--- a/testsuite/memstomp.overlap/stpncpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/stpncpy.c	2013-03-05 15:37:22.000000000 -0700
+@@ -0,0 +1,2 @@
++#define STRNCPY stpncpy
++#include "strncpy.c"
+diff -Nrup a/testsuite/memstomp.overlap/strcat-2.c b/testsuite/memstomp.overlap/strcat-2.c
+--- a/testsuite/memstomp.overlap/strcat-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/strcat-2.c	2013-03-11 13:27:10.000000000 -0600
+@@ -0,0 +1,2 @@
++#define STRCPY strcat
++#include "strcpy-2.c"
+diff -Nrup a/testsuite/memstomp.overlap/strcat.c b/testsuite/memstomp.overlap/strcat.c
+--- a/testsuite/memstomp.overlap/strcat.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/strcat.c	2013-03-05 15:38:38.000000000 -0700
+@@ -0,0 +1,2 @@
++#define STRCPY strcat
++#include "strcpy.c"
+diff -Nrup a/testsuite/memstomp.overlap/strcpy-2.c b/testsuite/memstomp.overlap/strcpy-2.c
+--- a/testsuite/memstomp.overlap/strcpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/strcpy-2.c	2013-03-11 14:01:54.000000000 -0600
+@@ -0,0 +1,18 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRCPY
++#define STRCPY strcpy
++#endif
++
++
++char arr[32] = "this is a test";
++char *p1 = &arr[0];
++char *p2 = &arr[1];
++main ()
++{
++  STRCPY (p1, p2);
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/strcpy.c b/testsuite/memstomp.overlap/strcpy.c
+--- a/testsuite/memstomp.overlap/strcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/strcpy.c	2013-03-11 14:01:58.000000000 -0600
+@@ -0,0 +1,18 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRCPY
++#define STRCPY strcpy
++#endif
++
++
++char arr[32] = "this is a test";
++char *p1 = &arr[0];
++char *p2 = &arr[1];
++main ()
++{
++  STRCPY (p2, p1);
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/strncat-2.c b/testsuite/memstomp.overlap/strncat-2.c
+--- a/testsuite/memstomp.overlap/strncat-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/strncat-2.c	2013-03-11 13:27:47.000000000 -0600
+@@ -0,0 +1,2 @@
++#define STRNCPY strncat
++#include "strncpy-2.c"
+diff -Nrup a/testsuite/memstomp.overlap/strncat.c b/testsuite/memstomp.overlap/strncat.c
+--- a/testsuite/memstomp.overlap/strncat.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/strncat.c	2013-03-05 15:38:56.000000000 -0700
+@@ -0,0 +1,2 @@
++#define STRNCPY strncat
++#include "strncpy.c"
+diff -Nrup a/testsuite/memstomp.overlap/strncpy-2.c b/testsuite/memstomp.overlap/strncpy-2.c
+--- a/testsuite/memstomp.overlap/strncpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/strncpy-2.c	2013-03-11 14:02:00.000000000 -0600
+@@ -0,0 +1,18 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRNCPY
++#define STRNCPY strncpy
++#endif
++
++
++char arr[32] = "this is a test";
++char *p1 = &arr[0];
++char *p2 = &arr[1];
++main ()
++{
++  STRNCPY (p2, p1, strlen (p1));
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/strncpy.c b/testsuite/memstomp.overlap/strncpy.c
+--- a/testsuite/memstomp.overlap/strncpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/strncpy.c	2013-03-11 14:02:40.000000000 -0600
+@@ -0,0 +1,18 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRNCPY
++#define STRNCPY strncpy
++#endif
++
++
++char arr[32] = "this is a test";
++char *p1 = &arr[0];
++char *p2 = &arr[1];
++main ()
++{
++  STRNCPY (p1, p2, strlen (p2));
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/wcscat-2.c b/testsuite/memstomp.overlap/wcscat-2.c
+--- a/testsuite/memstomp.overlap/wcscat-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wcscat-2.c	2013-03-11 13:34:04.000000000 -0600
+@@ -0,0 +1,2 @@
++#define WCSCPY wcscat
++#include "wcscpy-2.c"
+diff -Nrup a/testsuite/memstomp.overlap/wcscat.c b/testsuite/memstomp.overlap/wcscat.c
+--- a/testsuite/memstomp.overlap/wcscat.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wcscat.c	2013-03-11 13:33:44.000000000 -0600
+@@ -0,0 +1,2 @@
++#define WCSCPY wcscat
++#include "wcscpy.c"
+diff -Nrup a/testsuite/memstomp.overlap/wcscpy-2.c b/testsuite/memstomp.overlap/wcscpy-2.c
+--- a/testsuite/memstomp.overlap/wcscpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wcscpy-2.c	2013-03-11 14:02:06.000000000 -0600
+@@ -0,0 +1,18 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef WCSCPY
++#define WCSCPY wcscpy
++#endif
++
++
++wchar_t arr[32] = L"this is a test";
++wchar_t *p1 = &arr[0];
++wchar_t *p2 = &arr[1];
++main ()
++{
++  WCSCPY (p2, p1);
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/wcscpy.c b/testsuite/memstomp.overlap/wcscpy.c
+--- a/testsuite/memstomp.overlap/wcscpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wcscpy.c	2013-03-11 14:02:10.000000000 -0600
+@@ -0,0 +1,18 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef WCSCPY
++#define WCSCPY wcscpy
++#endif
++
++
++wchar_t arr[32] = L"this is a test";
++wchar_t *p1 = &arr[0];
++wchar_t *p2 = &arr[1];
++main ()
++{
++  WCSCPY (p1, p2);
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/wcsncat.c b/testsuite/memstomp.overlap/wcsncat.c
+--- a/testsuite/memstomp.overlap/wcsncat.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wcsncat.c	2013-03-11 13:34:37.000000000 -0600
+@@ -0,0 +1,2 @@
++#define WCSNCPY wcsncat
++#include "wcsncpy.c"
+diff -Nrup a/testsuite/memstomp.overlap/wcsncpy-2.c b/testsuite/memstomp.overlap/wcsncpy-2.c
+--- a/testsuite/memstomp.overlap/wcsncpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wcsncpy-2.c	2013-03-11 14:02:13.000000000 -0600
+@@ -0,0 +1,18 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef WCSNCPY
++#define WCSNCPY wcsncpy
++#endif
++
++
++wchar_t arr[32] = L"this is a test";
++wchar_t *p1 = &arr[0];
++wchar_t *p2 = &arr[1];
++main ()
++{
++  WCSNCPY (p2, p1, wcslen (p2));
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/wcsncpy.c b/testsuite/memstomp.overlap/wcsncpy.c
+--- a/testsuite/memstomp.overlap/wcsncpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wcsncpy.c	2013-03-11 14:02:19.000000000 -0600
+@@ -0,0 +1,18 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef WCSNCPY
++#define WCSNCPY wcsncpy
++#endif
++
++
++wchar_t arr[32] = L"this is a test";
++wchar_t *p1 = &arr[0];
++wchar_t *p2 = &arr[1];
++main ()
++{
++  WCSNCPY (p1, p2, wcslen (p2));
++}
++
++
+diff -Nrup a/testsuite/memstomp.overlap/wmemcpy-2.c b/testsuite/memstomp.overlap/wmemcpy-2.c
+--- a/testsuite/memstomp.overlap/wmemcpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wmemcpy-2.c	2013-03-11 13:53:21.000000000 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY wmemcpy
++#define TYPE wchar_t
++#include "memcpy-2.c"
+diff -Nrup a/testsuite/memstomp.overlap/wmemcpy.c b/testsuite/memstomp.overlap/wmemcpy.c
+--- a/testsuite/memstomp.overlap/wmemcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wmemcpy.c	2013-03-11 13:51:10.000000000 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY wmemcpy
++#define TYPE wchar_t
++#include "memcpy.c"
+diff -Nrup a/testsuite/memstomp.overlap/wmempcpy-2.c b/testsuite/memstomp.overlap/wmempcpy-2.c
+--- a/testsuite/memstomp.overlap/wmempcpy-2.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wmempcpy-2.c	2013-03-11 13:53:32.000000000 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY wmempcpy
++#define TYPE wchar_t
++#include "memcpy-2.c"
+diff -Nrup a/testsuite/memstomp.overlap/wmempcpy.c b/testsuite/memstomp.overlap/wmempcpy.c
+--- a/testsuite/memstomp.overlap/wmempcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/wmempcpy.c	2013-03-11 13:51:14.000000000 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY wmempcpy
++#define TYPE wchar_t
++#include "memcpy.c"
+--- /dev/null	2013-02-26 15:11:24.372721019 -0700
++++ b/testsuite/lib/memstomp.exp	2013-03-11 21:37:45.680005590 -0600
+@@ -0,0 +1,15 @@
++proc find_memstomp {} {
++  global tool_root_dir 
++  global base_dir
++
++  set file [findfile $base_dir/../memstomp $base_dir/../memstomp memstomp]
++  return $file
++}
++
++proc find_libmemstomp {} {
++  global tool_root_dir 
++  global base_dir
++
++  set file [findfile $base_dir/../.libs/libmemstomp.so $base_dir/../.libs/libmemstomp.so libmemstomp.so]
++  return $file
++}
+--- /dev/null	2013-02-26 15:11:24.372721019 -0700
++++ b/testsuite/memstomp.overlap/overlap.exp	2013-03-11 21:38:02.207939417 -0600
+@@ -0,0 +1,59 @@
++# Copyright (C) 2013 Free Software Foundation, Inc.
++
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with GCC; see the file COPYING3.  If not see
++# <http://www.gnu.org/licenses/>.
++#
++# This was originally copied from GCC's dejagnu testing framework
++#
++
++load_lib memstomp.exp
++set memstomp [find_memstomp]
++set libmemstomp [find_libmemstomp]
++
++if $tracelevel then {
++    strace $tracelevel
++}
++
++#
++# main test loop
++#
++
++proc compile-and-execute { sources } {
++  global memstomp
++  global libmemstomp
++
++  set src [lindex $sources 0]
++
++  if {[catch {exec gcc -fno-builtin $src} results]} {
++    fail "$src compilation $results"
++  } else {
++    pass "$src compilation $results"
++  }
++
++  catch {exec /bin/bash -c "LD_PRELOAD=$libmemstomp $memstomp ./a.out"} results
++  if {[regexp "overlap for a.out" $results]} {
++    pass "$src found overlap $results"
++  } else {
++    fail "$src found overlap $results"
++  }
++}
++
++foreach src [lsort [glob -nocomplain $srcdir/$subdir/*.c]] {
++    # If we're only testing specific files and this isn't one of them, skip it.
++    if ![runtest_file_p $runtests $src] then {
++        continue
++    }
++
++   compile-and-execute $src
++}
+--- /dev/null	2013-02-26 15:11:24.372721019 -0700
++++ b/testsuite/memstomp.nooverlap/nooverlap.exp	2013-03-11 21:39:20.352626597 -0600
+@@ -0,0 +1,55 @@
++# Copyright (C) 2013 Free Software Foundation, Inc.
++
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with GCC; see the file COPYING3.  If not see
++# <http://www.gnu.org/licenses/>.
++#
++# This was originally copied from GCC's dejagnu testing framework
++# 
++load_lib memstomp.exp
++set memstomp [find_memstomp]
++set libmemstomp [find_libmemstomp]
++
++if $tracelevel then {
++    strace $tracelevel
++}
++
++#
++# main test loop
++#
++
++proc compile-and-execute { sources } {
++  global memstomp
++  set src [lindex $sources 0]
++
++  if {[catch {exec gcc -fno-builtin $src} results]} {
++    fail "$src compilation $results"
++  } else {
++    pass "$src compilation $results"
++  }
++  catch {exec /bin/bash -c "LD_PRELOAD=$libmemstomp $memstomp ./a.out"} results
++  if {[regexp "overlap for a.out" $results]} {
++    fail "$src found no overlap $results"
++  } else {
++    pass "$src found no overlap $results"
++  }
++}
++
++foreach src [lsort [glob -nocomplain $srcdir/$subdir/*.c]] {
++    # If we're only testing specific files and this isn't one of them, skip it.
++    if ![runtest_file_p $runtests $src] then {
++        continue
++    }
++
++   compile-and-execute $src
++}
