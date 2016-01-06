@@ -1,0 +1,1054 @@
+*** a/Makefile.am	2014-05-29 10:40:14.997714171 -0600
+--- b/Makefile.am	2014-05-29 12:42:18.358166208 -0600
+*************** libmemstomp_la_LIBADD = \
+*** 53,58 ****
+--- 53,60 ----
+  	-ldl
+  libmemstomp_la_CFLAGS = \
+  	$(PTHREAD_CFLAGS) \
++ 	-fno-tree-vrp \
++ 	-fno-delete-null-pointer-checks \
+  	-DSONAME=\"libmemstomp.so\"
+  
+  libmemstomp_backtrace_symbols_la_SOURCES = \
+*************** libmemstomp_backtrace_symbols_la_LIBADD
+*** 68,74 ****
+  	-lrt \
+  	-ldl
+  libmemstomp_backtrace_symbols_la_CFLAGS = \
+! 	$(PTHREAD_CFLAGS)
+  
+  memstomp: memstomp.in Makefile
+  	sed -e 's,@PACKAGE_STRING\@,$(PACKAGE_STRING),g' \
+--- 70,76 ----
+  	-lrt \
+  	-ldl
+  libmemstomp_backtrace_symbols_la_CFLAGS = \
+! 	$(PTHREAD_CFLAGS) 
+  
+  memstomp: memstomp.in Makefile
+  	sed -e 's,@PACKAGE_STRING\@,$(PACKAGE_STRING),g' \
+*** a/memstomp.c	2014-05-29 10:40:15.016714123 -0600
+--- b/memstomp.c	2014-05-29 13:59:20.314343481 -0600
+***************
+*** 62,67 ****
+--- 62,79 ----
+  #define likely(x)	__builtin_expect(!!(x), 1)
+  #define unlikely(x)	__builtin_expect(!!(x), 0)
+  
++ #undef strcmp
++ #undef strncmp
++ #undef strdup
++ #undef strndup
++ #undef strchr
++ #undef strrchr
++ #undef strcspn
++ #undef strspn
++ #undef strpbrk
++ #undef strtok_r
++ #undef memcmp
++ 
+  static bool abrt_trap = false;
+  
+  static bool quiet_mode = false;
+*************** static void warn_copylap(void * dest, co
+*** 316,321 ****
+--- 328,356 ----
+  	free(info);
+  }
+  
++ static void warn_null(char const *name)
++ {
++ 	char prname[17];
++ 	char buf[160];
++ 
++ /* Avoid fprintf which is not async signal safe.  fprintf may call malloc,
++  * which may experience trouble if the bad memcpy was called from a signal
++  * handler whose invoking signal interrupted malloc.
++  */
++ 	int const j = snprintf(buf, sizeof(buf),
++ 		"\n\n%s NULL pointer %s(%d)\n",
++ 		name, get_prname(prname), getpid());
++ 	write(STDERR_FILENO, buf, umin(j, sizeof(buf)));
++ 	
++ /* If generate_stacktrace() indirectly invokes malloc (such as via libbfd),
++  * then this is not async signal safe.  But the write() above will produce
++  * some evidence before any possible trouble below.
++  */
++ 	char *const info = generate_stacktrace();
++ 	fprintf(stderr, "%s", info);
++ 	free(info);
++ }
++ 
+  static void *copy(void *dest, void const *src, size_t count, char const *name)
+  {
+  	size_t d = (char *)dest - (char *)src;
+*************** static void *copy(void *dest, void const
+*** 326,331 ****
+--- 361,367 ----
+  		/* report the overlap */
+  		warn_copylap(dest, src, count, name);
+  	}
++ 
+  	/* be safe use memmove */
+  	return memmove(dest, src, count);
+  }
+*************** char *stpncpy(char *dst, char const *src
+*** 496,498 ****
+--- 532,956 ----
+  
+  /* XXX wcstok: Ugly! */
+  
++ /* All the interposition routines below are just checking for NULL
++    arguments when ISO demands they be non-null.  */
++ 
++ void *memmove (void *dest, const void *src, size_t n)
++ {
++   static void * (*real_memmove)(void *, const void *, size_t) = NULL;
++   if (!real_memmove)
++ 	real_memmove = dlsym(RTLD_NEXT, "memmove");
++ 
++   if (unlikely (dest == NULL || src == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("memmove");
++ 	return 0;
++   }
++ 
++   return real_memmove (dest, src, n);
++ }
++ 
++ int memcmp (const void *__s1, const void *__s2, size_t __n)
++ {
++   static int (*real_memcmp)(const void *, const void *, size_t) = NULL;
++   if (!real_memcmp)
++ 	real_memcmp = dlsym(RTLD_NEXT, "memcmp");
++ 
++   if (unlikely (__s1 == NULL || __s2 == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("memcmp");
++ 	return 0;
++   }
++ 
++   return real_memcmp (__s1, __s2, __n);
++ }
++ 
++ int strcmp (const char *__s1, const char *__s2)
++ {
++   static int (*real_strcmp)(const char *, const char *) = NULL;
++   if (!real_strcmp)
++ 	real_strcmp = dlsym(RTLD_NEXT, "strcmp");
++ 
++   if (unlikely (__s1 == NULL || __s2 == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strcmp");
++ 	return 0;
++   }
++ 
++   return real_strcmp (__s1, __s2);
++ }
++ 
++ int strncmp (const char *__s1, const char *__s2, size_t __n)
++ {
++   static int (*real_strncmp)(const char *, const char *, size_t) = NULL;
++   if (!real_strncmp)
++ 	real_strncmp = dlsym(RTLD_NEXT, "strncmp");
++ 
++   if (unlikely (__s1 == NULL || __s2 == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strncmp");
++ 	return 0;
++   }
++ 
++   return real_strncmp (__s1, __s2, __n);
++ }
++ 
++ int strcoll (const char *__s1, const char *__s2)
++ {
++   static int (*real_strcoll)(const char *, const char *) = NULL;
++   if (!real_strcoll)
++ 	real_strcoll = dlsym(RTLD_NEXT, "strcoll");
++ 
++   if (unlikely (__s1 == NULL || __s2 == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strcoll");
++ 	return 0;
++   }
++ 
++   return real_strcoll (__s1, __s2);
++ }
++ 
++ int strcoll_l (const char *__s1, const char *__s2, __locale_t __l)
++ {
++   static int (*real_strcoll_l)(const char *, const char *, __locale_t) = NULL;
++   if (!real_strcoll_l)
++ 	real_strcoll_l = dlsym(RTLD_NEXT, "strcoll_l");
++ 
++   if (unlikely (__s1 == NULL || __s2 == NULL || __l == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strcoll_l");
++ 	return 0;
++   }
++ 
++   return real_strcoll_l (__s1, __s2, __l);
++ }
++ 
++ size_t strxfrm (char *__dest, const char *__src, size_t __n)
++ {
++   static size_t (*real_strxfrm)(char *, const char *, size_t) = NULL;
++   if (!real_strxfrm)
++ 	real_strxfrm = dlsym(RTLD_NEXT, "strxfrm");
++ 
++   if (unlikely (__src == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strxfrm");
++ 	return 0;
++   }
++ 
++   return real_strxfrm (__dest, __src, __n);
++ }
++ 
++ size_t strxfrm_l (char *__dest, const char *__src, size_t __n, __locale_t __l)
++ {
++   static size_t (*real_strxfrm_l)(char *, const char *, size_t, __locale_t) = NULL;
++   if (!real_strxfrm_l)
++ 	real_strxfrm_l = dlsym(RTLD_NEXT, "strxfrm_l");
++ 
++   if (unlikely (__src == NULL || __l == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strxfrm_l");
++ 	return 0;
++   }
++ 
++   return real_strxfrm_l (__dest, __src, __n, __l);
++ }
++ 
++ 
++ void *memset (void *__s, int __c, size_t __n)
++ {
++   static void * (*real_memset)(void *, int, size_t) = NULL;
++   if (!real_memset)
++ 	real_memset = dlsym(RTLD_NEXT, "memset");
++ 
++   if (unlikely (__s == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("memset");
++ 	return 0;
++   }
++ 
++   return real_memset (__s, __c, __n);
++ }
++ 
++ void *memchr (const void *__s, int __c, size_t __n)
++ {
++   static void * (*real_memchr)(const void *, int, size_t) = NULL;
++   if (!real_memchr)
++ 	real_memchr = dlsym(RTLD_NEXT, "memchr");
++ 
++   if (unlikely (__s == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("memchr");
++ 	return 0;
++   }
++ 
++   return real_memchr (__s, __c, __n);
++ }
++ 
++ void *memrchr (const void *__s, int __c, size_t __n)
++ {
++   static void * (*real_memrchr)(const void *, int, size_t) = NULL;
++   if (!real_memrchr)
++ 	real_memrchr = dlsym(RTLD_NEXT, "memrchr");
++ 
++   if (unlikely (__s == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("memrchr");
++ 	return 0;
++   }
++ 
++   return real_memrchr (__s, __c, __n);
++ }
++ 
++ void *rawmemchr (const void *__s, int __c)
++ {
++   static void * (*real_rawmemchr)(const void *, int, size_t) = NULL;
++   if (!real_rawmemchr)
++ 	real_rawmemchr = dlsym(RTLD_NEXT, "rawmemchr");
++ 
++   if (unlikely (__s == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("rawmemchr");
++ 	return 0;
++   }
++ 
++   return real_rawmemchr (__s, __c, __c);
++ }
++ 
++ size_t strlen (const char *__s)
++ {
++   static size_t (*real_strlen)(const char *) = NULL;
++   if (!real_strlen)
++ 	real_strlen = dlsym(RTLD_NEXT, "strlen");
++ 
++   if (unlikely (__s == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strlen");
++ 	return 0;
++   }
++ 
++   return real_strlen (__s);
++ }
++ 
++ char *strdup (const char *__s)
++ {
++   static char *(*real_strdup)(const char *) = NULL;
++   if (!real_strdup)
++ 	real_strdup = dlsym(RTLD_NEXT, "strdup");
++ 
++   if (unlikely (__s == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strdup");
++ 	return 0;
++   }
++ 
++   return real_strdup (__s);
++ }
++ 
++ char *strndup (const char *__s, size_t __n)
++ {
++   static char *(*real_strndup)(const char *, size_t) = NULL;
++   if (!real_strndup)
++ 	real_strndup = dlsym(RTLD_NEXT, "strndup");
++ 
++   if (unlikely (__s == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strndup");
++ 	return 0;
++   }
++ 
++   return real_strndup (__s, __n);
++ }
++ 
++ char *strchr (const char *__s, int __c)
++ {
++   static char * (*real_strchr)(const void *, int) = NULL;
++   if (!real_strchr)
++ 	real_strchr = dlsym(RTLD_NEXT, "strchr");
++ 
++   if (unlikely (__s == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strchr");
++ 	return 0;
++   }
++ 
++   return real_strchr (__s, __c);
++ }
++ 
++ char *strrchr (const char *__s, int __c)
++ {
++   static char * (*real_strrchr)(const void *, int) = NULL;
++   if (!real_strrchr)
++ 	real_strrchr = dlsym(RTLD_NEXT, "strrchr");
++ 
++   if (unlikely (__s == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strrchr");
++ 	return 0;
++   }
++ 
++   return real_strrchr (__s, __c);
++ }
++ 
++ char *strchrnul (const char *__s, int __c)
++ {
++   static char * (*real_strchrnul)(const void *, int) = NULL;
++   if (!real_strchrnul)
++ 	real_strchrnul = dlsym(RTLD_NEXT, "strchrnul");
++ 
++   if (unlikely (__s == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strchrnul");
++ 	return 0;
++   }
++ 
++   return real_strchrnul (__s, __c);
++ }
++ 
++ size_t strcspn (const char *__s, const char *__reject)
++ {
++   static size_t (*real_strcspn)(const void *, const char *) = NULL;
++   if (!real_strcspn)
++ 	real_strcspn = dlsym(RTLD_NEXT, "strcspn");
++ 
++   if (unlikely (__s == NULL || __reject == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strcspn");
++ 	return 0;
++   }
++ 
++   return real_strcspn (__s, __reject);
++ }
++ 
++ size_t strspn (const char *__s, const char *__accept)
++ {
++   static size_t (*real_strspn)(const void *, const char *) = NULL;
++   if (!real_strspn)
++ 	real_strspn = dlsym(RTLD_NEXT, "strspn");
++ 
++   if (unlikely (__s == NULL || __accept == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strspn");
++ 	return 0;
++   }
++ 
++   return real_strspn (__s, __accept);
++ }
++ 
++ char * strpbrk (const char *__s, const char *__accept)
++ {
++   static char * (*real_strpbrk)(const void *, const char *) = NULL;
++   if (!real_strpbrk)
++ 	real_strpbrk = dlsym(RTLD_NEXT, "strpbrk");
++ 
++   if (unlikely (__s == NULL || __accept == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strpbrk");
++ 	return 0;
++   }
++ 
++   return real_strpbrk (__s, __accept);
++ }
++ 
++ char * strstr (const char *__haystack, const char *__needle)
++ {
++   static char * (*real_strstr)(const void *, const char *) = NULL;
++   if (!real_strstr)
++ 	real_strstr = dlsym(RTLD_NEXT, "strstr");
++ 
++   if (unlikely (__haystack == NULL || __needle == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strstr");
++ 	return 0;
++   }
++ 
++   return real_strstr (__haystack, __needle);
++ }
++ 
++ char *strcasestr (const char *__haystack, const char *__needle)
++ {
++   static char * (*real_strcasestr)(const void *, const char *) = NULL;
++   if (!real_strcasestr)
++ 	real_strcasestr = dlsym(RTLD_NEXT, "strcasestr");
++ 
++   if (unlikely (__haystack == NULL || __needle == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strcasestr");
++ 	return 0;
++   }
++ 
++   return real_strcasestr (__haystack, __needle);
++ }
++ 
++ void *memmem (const void *__haystack, size_t __haystacklen,
++ 	      const void *__needle, size_t __needlelen)
++ {
++   static char * (*real_memmem)(const void *, size_t, const char *, size_t) = NULL;
++   if (!real_memmem)
++ 	real_memmem = dlsym(RTLD_NEXT, "memmem");
++ 
++   if (unlikely (__haystack == NULL || __needle == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("memmem");
++ 	return 0;
++   }
++ 
++   return real_memmem (__haystack, __haystacklen, __needle, __needlelen);
++ }
++ 
++ char * strtok (char *__s, const char *__delim)
++ {
++   static char * (*real_strtok)(void *, const char *) = NULL;
++   if (!real_strtok)
++ 	real_strtok = dlsym(RTLD_NEXT, "strtok");
++ 
++   if (unlikely (__delim == NULL)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strtok");
++ 	return 0;
++   }
++ 
++   return real_strtok (__s, __delim);
++ }
++ 
++ 
++ char * strtok_r (char *__s, const char *__delim, char **__save_ptr)
++ {
++   static char * (*real_strtok_r)(void *, const char *, char **) = NULL;
++   if (!real_strtok_r)
++ 	real_strtok_r = dlsym(RTLD_NEXT, "strtok_r");
++ 
++   if (unlikely (__delim == NULL || __save_ptr)) {
++ 	if (abrt_trap) ABRT_TRAP;
++ 	/* report the NULL pointer */
++ 	warn_null("strtok_r");
++ 	return 0;
++   }
++ 
++   return real_strtok_r (__s, __delim, __save_ptr);
++ }
++ 
+diff -Nrup a/testsuite/memstomp.null/memccpy.c b/testsuite/memstomp.null/memccpy.c
+--- a/testsuite/memstomp.null/memccpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/memccpy.c	2014-05-29 12:42:18.358166208 -0600
+@@ -0,0 +1,20 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef MEMCCPY
++#define MEMCCPY memccpy
++#define TYPE char
++#endif
++
++TYPE arr1[10] = {0};
++TYPE arr2[10] = {0};
++TYPE *p1 = &arr1[0];
++TYPE *p2 = &arr2[1];
++size_t count = 9;
++main ()
++{
++  MEMCCPY (NULL, NULL, -1, 0);
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/memchr.c b/testsuite/memstomp.null/memchr.c
+--- a/testsuite/memstomp.null/memchr.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/memchr.c	2014-05-29 14:09:04.667841941 -0600
+@@ -0,0 +1,4 @@
++#define MEMSET memchr
++#define TYPE char
++#include "memset.c"
++
+diff -Nrup a/testsuite/memstomp.null/memcmp.c b/testsuite/memstomp.null/memcmp.c
+--- a/testsuite/memstomp.null/memcmp.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/memcmp.c	2014-05-29 13:57:53.098567650 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY memcmp
++#define TYPE char
++#include "memcpy.c"
+diff -Nrup a/testsuite/memstomp.null/memcpy.c b/testsuite/memstomp.null/memcpy.c
+--- a/testsuite/memstomp.null/memcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/memcpy.c	2014-05-29 14:01:34.002999896 -0600
+@@ -0,0 +1,20 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef MEMCPY
++#define MEMCPY memcpy
++#define TYPE char
++#endif
++
++TYPE arr1[10] = {0};
++TYPE arr2[10] = {0};
++TYPE *p1 = &arr1[0];
++TYPE *p2 = &arr2[1];
++size_t count = 9;
++main ()
++{
++  return MEMCPY (NULL, NULL, 0) == 0 ;
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/memmem.c b/testsuite/memstomp.null/memmem.c
+--- a/testsuite/memstomp.null/memmem.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/memmem.c	2014-05-29 14:18:37.569363960 -0600
+@@ -0,0 +1,20 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef MEMMEM
++#define MEMMEM memmem
++#define TYPE char
++#endif
++
++TYPE arr1[10] = {0};
++TYPE arr2[10] = {0};
++TYPE *p1 = &arr1[0];
++TYPE *p2 = &arr2[1];
++size_t count = 9;
++main ()
++{
++  return MEMMEM (NULL, 0, NULL, 0) == 0 ;
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/memmove.c b/testsuite/memstomp.null/memmove.c
+--- a/testsuite/memstomp.null/memmove.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/memmove.c	2014-05-29 13:57:29.563628151 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY memmove
++#define TYPE char
++#include "memcpy.c"
+diff -Nrup a/testsuite/memstomp.null/mempcpy.c b/testsuite/memstomp.null/mempcpy.c
+--- a/testsuite/memstomp.null/mempcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/mempcpy.c	2014-05-29 12:42:18.358166208 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY mempcpy
++#define TYPE char
++#include "memcpy.c"
+diff -Nrup a/testsuite/memstomp.null/memrchr.c b/testsuite/memstomp.null/memrchr.c
+--- a/testsuite/memstomp.null/memrchr.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/memrchr.c	2014-05-29 14:09:22.122797099 -0600
+@@ -0,0 +1,4 @@
++#define MEMSET memrchr
++#define TYPE char
++#include "memset.c"
++
+diff -Nrup a/testsuite/memstomp.null/memset.c b/testsuite/memstomp.null/memset.c
+--- a/testsuite/memstomp.null/memset.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/memset.c	2014-05-29 14:08:06.411991603 -0600
+@@ -0,0 +1,20 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef MEMSET
++#define MEMSET memset
++#define TYPE char
++#endif
++
++TYPE arr1[10] = {0};
++TYPE arr2[10] = {0};
++TYPE *p1 = &arr1[0];
++TYPE *p2 = &arr2[1];
++size_t count = 9;
++main ()
++{
++  return MEMSET (NULL, -1, 0) == 0;
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/null.exp b/testsuite/memstomp.null/null.exp
+--- a/testsuite/memstomp.null/null.exp	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/null.exp	2014-05-29 12:42:18.358166208 -0600
+@@ -0,0 +1,59 @@
++# Copyright (C) 2013 Free Software Foundation, Inc.
++
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with GCC; see the file COPYING3.  If not see
++# <http://www.gnu.org/licenses/>.
++#
++# This was originally copied from GCC's dejagnu testing framework
++#
++
++load_lib memstomp.exp
++set memstomp [find_memstomp]
++set libmemstomp [find_libmemstomp]
++
++if $tracelevel then {
++    strace $tracelevel
++}
++
++#
++# main test loop
++#
++
++proc compile-and-execute { sources } {
++  global memstomp
++  global libmemstomp
++
++  set src [lindex $sources 0]
++
++  if {[catch {exec gcc -fno-builtin $src} results]} {
++    fail "$src compilation $results"
++  } else {
++    pass "$src compilation $results"
++  }
++
++  catch {exec /bin/bash -c "LD_PRELOAD=$libmemstomp $memstomp ./a.out"} results
++  if {[regexp "NULL pointer" $results]} {
++    pass "$src found NULL $results"
++  } else {
++    fail "$src found NULL $results"
++  }
++}
++
++foreach src [lsort [glob -nocomplain $srcdir/$subdir/*.c]] {
++    # If we're only testing specific files and this isn't one of them, skip it.
++    if ![runtest_file_p $runtests $src] then {
++        continue
++    }
++
++   compile-and-execute $src
++}
+diff -Nrup a/testsuite/memstomp.null/rawmemchr.c b/testsuite/memstomp.null/rawmemchr.c
+--- a/testsuite/memstomp.null/rawmemchr.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/rawmemchr.c	2014-05-29 14:10:36.610605748 -0600
+@@ -0,0 +1,20 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef RAWMEMCHR
++#define RAWMEMCHR rawmemchr
++#define TYPE char
++#endif
++
++TYPE arr1[10] = {0};
++TYPE arr2[10] = {0};
++TYPE *p1 = &arr1[0];
++TYPE *p2 = &arr2[1];
++size_t count = 9;
++main ()
++{
++  return RAWMEMCHR (NULL, 0) == 0;
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/stpcpy.c b/testsuite/memstomp.null/stpcpy.c
+--- a/testsuite/memstomp.null/stpcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/stpcpy.c	2014-05-29 12:42:18.358166208 -0600
+@@ -0,0 +1,2 @@
++#define STRCPY stpcpy
++#include "strcpy.c"
+diff -Nrup a/testsuite/memstomp.null/stpncpy.c b/testsuite/memstomp.null/stpncpy.c
+--- a/testsuite/memstomp.null/stpncpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/stpncpy.c	2014-05-29 12:42:18.358166208 -0600
+@@ -0,0 +1,2 @@
++#define STRNCPY stpncpy
++#include "strncpy.c"
+diff -Nrup a/testsuite/memstomp.null/strcasestr.c b/testsuite/memstomp.null/strcasestr.c
+--- a/testsuite/memstomp.null/strcasestr.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strcasestr.c	2014-05-29 14:18:59.099308034 -0600
+@@ -0,0 +1,2 @@
++#define STRCMP strstr
++#include "strcmp.c"
+diff -Nrup a/testsuite/memstomp.null/strcat.c b/testsuite/memstomp.null/strcat.c
+--- a/testsuite/memstomp.null/strcat.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strcat.c	2014-05-29 12:42:18.359166205 -0600
+@@ -0,0 +1,2 @@
++#define STRCPY strcat
++#include "strcpy.c"
+diff -Nrup a/testsuite/memstomp.null/strchr.c b/testsuite/memstomp.null/strchr.c
+--- a/testsuite/memstomp.null/strchr.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strchr.c	2014-05-29 14:13:39.929134865 -0600
+@@ -0,0 +1,4 @@
++#define RAWMEMCHR strchr
++#define TYPE char
++#include "rawmemchr.c"
++
+diff -Nrup a/testsuite/memstomp.null/strchrnul.c b/testsuite/memstomp.null/strchrnul.c
+--- a/testsuite/memstomp.null/strchrnul.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strchrnul.c	2014-05-29 14:15:17.983882584 -0600
+@@ -0,0 +1,4 @@
++#define RAWMEMCHR strrchr
++#define TYPE char
++#include "rawmemchr.c"
++
+diff -Nrup a/testsuite/memstomp.null/strcmp.c b/testsuite/memstomp.null/strcmp.c
+--- a/testsuite/memstomp.null/strcmp.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strcmp.c	2014-05-29 14:17:21.903560538 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRCMP
++#define STRCMP strcmp
++#endif
++
++
++char arr1[32] = "this is a test";
++char arr2[32] = "this is a test";
++char *p1 = &arr1[0];
++char *p2 = &arr2[1];
++main ()
++{
++  return STRCMP (NULL, NULL) == 0;
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/strcoll.c b/testsuite/memstomp.null/strcoll.c
+--- a/testsuite/memstomp.null/strcoll.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strcoll.c	2014-05-29 14:04:39.735522619 -0600
+@@ -0,0 +1,2 @@
++#define STRNCPY strcoll
++#include "strcmp.c"
+Binary files a/testsuite/memstomp.null/.strcoll.c.swp and b/testsuite/memstomp.null/.strcoll.c.swp differ
+diff -Nrup a/testsuite/memstomp.null/strcoll_l.c b/testsuite/memstomp.null/strcoll_l.c
+--- a/testsuite/memstomp.null/strcoll_l.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strcoll_l.c	2014-05-29 14:05:22.181413555 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRCMP
++#define STRCMP strcoll_l
++#endif
++
++
++char arr1[32] = "this is a test";
++char arr2[32] = "this is a test";
++char *p1 = &arr1[0];
++char *p2 = &arr2[1];
++main ()
++{
++  return STRCMP (NULL, NULL, NULL);
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/strcpy.c b/testsuite/memstomp.null/strcpy.c
+--- a/testsuite/memstomp.null/strcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strcpy.c	2014-05-29 12:42:18.359166205 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRCPY
++#define STRCPY strcpy
++#endif
++
++
++char arr1[32] = "this is a test";
++char arr2[32] = "this is a test";
++char *p1 = &arr1[0];
++char *p2 = &arr2[1];
++main ()
++{
++  STRCPY (NULL, NULL);
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/strcspn.c b/testsuite/memstomp.null/strcspn.c
+--- a/testsuite/memstomp.null/strcspn.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strcspn.c	2014-05-29 14:16:12.219741618 -0600
+@@ -0,0 +1,2 @@
++#define STRCMP strcspn
++#include "strcmp.c"
+diff -Nrup a/testsuite/memstomp.null/strdup.c b/testsuite/memstomp.null/strdup.c
+--- a/testsuite/memstomp.null/strdup.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strdup.c	2014-05-29 14:12:20.521338829 -0600
+@@ -0,0 +1,3 @@
++#define STRLEN strdup
++#define TYPE char
++#include "strlen.c"
+diff -Nrup a/testsuite/memstomp.null/strlen.c b/testsuite/memstomp.null/strlen.c
+--- a/testsuite/memstomp.null/strlen.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strlen.c	2014-05-29 14:12:28.969317129 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRLEN
++#define STRLEN strlen
++#endif
++
++
++char arr1[32] = "this is a test";
++char arr2[32] = "this is a test";
++char *p1 = &arr1[0];
++char *p2 = &arr2[1];
++main ()
++{
++  return STRLEN (NULL) == 0;
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/strncat.c b/testsuite/memstomp.null/strncat.c
+--- a/testsuite/memstomp.null/strncat.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strncat.c	2014-05-29 12:42:18.359166205 -0600
+@@ -0,0 +1,2 @@
++#define STRNCPY strncat
++#include "strncpy.c"
+diff -Nrup a/testsuite/memstomp.null/strncmp.c b/testsuite/memstomp.null/strncmp.c
+--- a/testsuite/memstomp.null/strncmp.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strncmp.c	2014-05-29 14:03:31.222698668 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRNCMP
++#define STRNCMP strncmp
++#endif
++
++
++char arr1[32] = "this is a test";
++char arr2[32] = "this is a test";
++char *p1 = &arr1[0];
++char *p2 = &arr2[1];
++main ()
++{
++  return STRNCMP (NULL, NULL, 0);
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/strncpy.c b/testsuite/memstomp.null/strncpy.c
+--- a/testsuite/memstomp.null/strncpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strncpy.c	2014-05-29 12:42:18.359166205 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRNCPY
++#define STRNCPY strncpy
++#endif
++
++
++char arr1[32] = "this is a test";
++char arr2[32] = "this is a test";
++char *p1 = &arr1[0];
++char *p2 = &arr2[1];
++main ()
++{
++  STRNCPY (NULL, NULL, 0);
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/strndup.c b/testsuite/memstomp.null/strndup.c
+--- a/testsuite/memstomp.null/strndup.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strndup.c	2014-05-29 14:13:18.192190697 -0600
+@@ -0,0 +1,4 @@
++#define RAWMEMCHR strndup
++#define TYPE char
++#include "rawmemchr.c"
++
+diff -Nrup a/testsuite/memstomp.null/strpbrk.c b/testsuite/memstomp.null/strpbrk.c
+--- a/testsuite/memstomp.null/strpbrk.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strpbrk.c	2014-05-29 14:17:09.970591544 -0600
+@@ -0,0 +1,2 @@
++#define STRCMP strpbrk
++#include "strcmp.c"
+diff -Nrup a/testsuite/memstomp.null/strrchr.c b/testsuite/memstomp.null/strrchr.c
+--- a/testsuite/memstomp.null/strrchr.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strrchr.c	2014-05-29 14:15:23.466868332 -0600
+@@ -0,0 +1,4 @@
++#define RAWMEMCHR strchrnul
++#define TYPE char
++#include "rawmemchr.c"
++
+diff -Nrup a/testsuite/memstomp.null/strspn.c b/testsuite/memstomp.null/strspn.c
+--- a/testsuite/memstomp.null/strspn.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strspn.c	2014-05-29 14:16:33.880685326 -0600
+@@ -0,0 +1,2 @@
++#define STRCMP strspn
++#include "strcmp.c"
+diff -Nrup a/testsuite/memstomp.null/strstr.c b/testsuite/memstomp.null/strstr.c
+--- a/testsuite/memstomp.null/strstr.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strstr.c	2014-05-29 14:16:56.195627338 -0600
+@@ -0,0 +1,2 @@
++#define STRCMP strstr
++#include "strcmp.c"
+diff -Nrup a/testsuite/memstomp.null/strtok.c b/testsuite/memstomp.null/strtok.c
+--- a/testsuite/memstomp.null/strtok.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strtok.c	2014-05-29 14:19:10.868277465 -0600
+@@ -0,0 +1,2 @@
++#define STRCMP strtok
++#include "strcmp.c"
+diff -Nrup a/testsuite/memstomp.null/strtok_r.c b/testsuite/memstomp.null/strtok_r.c
+--- a/testsuite/memstomp.null/strtok_r.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strtok_r.c	2014-05-29 14:19:53.089167807 -0600
+@@ -0,0 +1,20 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRTOK_R
++#define STRTOK_R strtok_r
++#define TYPE char
++#endif
++
++TYPE arr1[10] = {0};
++TYPE arr2[10] = {0};
++TYPE *p1 = &arr1[0];
++TYPE *p2 = &arr2[1];
++size_t count = 9;
++main ()
++{
++  return STRTOK_R (NULL, NULL, NULL) == 0 ;
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/strxfrm.c b/testsuite/memstomp.null/strxfrm.c
+--- a/testsuite/memstomp.null/strxfrm.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strxfrm.c	2014-05-29 14:06:23.335256429 -0600
+@@ -0,0 +1,2 @@
++#define STRNCPY strxfrm
++#include "strcmp.c"
+diff -Nrup a/testsuite/memstomp.null/strxfrm_l.c b/testsuite/memstomp.null/strxfrm_l.c
+--- a/testsuite/memstomp.null/strxfrm_l.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/strxfrm_l.c	2014-05-29 14:07:10.004136524 -0600
+@@ -0,0 +1,19 @@
++#define _GNU_SOURCE
++#include <string.h>
++#include <wchar.h>
++
++#ifndef STRCMP
++#define STRCMP strxfrm_l
++#endif
++
++
++char arr1[32] = "this is a test";
++char arr2[32] = "this is a test";
++char *p1 = &arr1[0];
++char *p2 = &arr2[1];
++main ()
++{
++  return STRCMP (NULL, NULL, 0, NULL);
++}
++
++
+diff -Nrup a/testsuite/memstomp.null/wmemcpy.c b/testsuite/memstomp.null/wmemcpy.c
+--- a/testsuite/memstomp.null/wmemcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/wmemcpy.c	2014-05-29 12:42:18.359166205 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY wmemcpy
++#define TYPE wchar_t
++#include "memcpy.c"
+diff -Nrup a/testsuite/memstomp.null/wmempcpy.c b/testsuite/memstomp.null/wmempcpy.c
+--- a/testsuite/memstomp.null/wmempcpy.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.null/wmempcpy.c	2014-05-29 12:42:18.359166205 -0600
+@@ -0,0 +1,3 @@
++#define MEMCPY wmempcpy
++#define TYPE wchar_t
++#include "memcpy.c"
