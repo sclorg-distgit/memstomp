@@ -1,0 +1,12 @@
+diff -Nrup a/memstomp.c b/memstomp.c
+--- a/memstomp.c	2011-03-30 21:27:19.000000000 -0600
++++ b/memstomp.c	2013-05-09 22:23:39.210837345 -0600
+@@ -174,7 +174,7 @@ static void setup(void) {
+         initialized = true;
+ 
+ 	char prname[17];
+-        fprintf(stderr, "memstomp: "PACKAGE_VERSION" sucessfully initialized for process %s (pid %lu).\n",
++        fprintf(stderr, "memstomp: "PACKAGE_VERSION" successfully initialized for process %s (pid %lu).\n",
+                 get_prname(prname), (unsigned long) getpid());
+ }
+ 
