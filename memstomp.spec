@@ -3,7 +3,7 @@
 %global		githash 38573e7d
 Name:		%{?scl_prefix}memstomp
 Version:	0.1.5
-Release:	5%{?dist}
+Release:	5.bs1%{?dist}
 Summary:	Warns of memory argument overlaps to various functions
 Group:		Development/Debuggers
 # The entire source code is LGPLV3+ with the exception of backtrace-symbols.c which
