@@ -1,0 +1,158 @@
+diff -Nrup a/memstomp.c b/memstomp.c
+--- a/memstomp.c	2014-08-26 13:13:30.004485804 -0600
++++ b/memstomp.c	2014-08-26 13:17:00.450138891 -0600
+@@ -241,6 +241,16 @@ static char* generate_stacktrace(void)
+         int const n = real_backtrace(retaddr, frames_max);
+         assert(n >= 0);
+ 
++	/* Adjust the frame addresses since they point to the next
++	   instruction to execute, not the call site which may be
++	   associated with different line numbers. 
++
++	   For the cases we care about in memstomp, just subtracting
++	   1 works the vast majority of the time.  It may not work for
++	   a tail-call into an intercepted routine though.  */
++	for (int i = 0; i < n; i++)
++		retaddr[i]--;
++	    
+         char **const strings = real_backtrace_symbols(retaddr, n);
+         assert(strings);
+ 
+diff -Nrup a/testsuite/lib/memstomp.exp b/testsuite/lib/memstomp.exp
+--- a/testsuite/lib/memstomp.exp	2014-08-26 13:13:29.964485869 -0600
++++ b/testsuite/lib/memstomp.exp	2014-08-26 14:29:37.334241044 -0600
+@@ -13,3 +13,11 @@ proc find_libmemstomp {} {
+   set file [findfile $base_dir/../.libs/libmemstomp.so $base_dir/../.libs/libmemstomp.so libmemstomp.so]
+   return $file
+ }
++
++proc find_libmemstomp_backtrace_symbols {} {
++  global tool_root_dir 
++  global base_dir
++
++  set file [findfile $base_dir/../.libs/libmemstomp-backtrace-symbols.so $base_dir/../.libs/libmemstomp-backtrace-symbols.so libmemstomp-backtrace-symbols.so]
++  return $file
++}
+diff -Nrup a/testsuite/memstomp.lineinfo/linenumber.c b/testsuite/memstomp.lineinfo/linenumber.c
+--- a/testsuite/memstomp.lineinfo/linenumber.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.lineinfo/linenumber.c	2014-08-26 13:23:12.535518727 -0600
+@@ -0,0 +1,23 @@
++#define __NO_STRING_INLINES
++#include <string.h>
++
++void
++something (void)
++{
++  char a[20] = "     hello";
++  memcpy (a, a + 5, 6);
++}
++
++void
++nothing (void)
++{
++  something ();
++}
++
++int
++main (void)
++{
++  nothing ();
++  return 0;
++}
++
+diff -Nrup a/testsuite/memstomp.lineinfo/linenumber.exp b/testsuite/memstomp.lineinfo/linenumber.exp
+--- a/testsuite/memstomp.lineinfo/linenumber.exp	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.lineinfo/linenumber.exp	2014-08-26 17:49:55.493353200 -0600
+@@ -0,0 +1,65 @@
++# Copyright (C) 2014 Free Software Foundation, Inc.
++
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with GCC; see the file COPYING3.  If not see
++# <http://www.gnu.org/licenses/>.
++#
++# This was originally copied from GCC's dejagnu testing framework
++#
++# This is a hack.  If we need more of these tests we'll want to use
++# something like dj's framework so that we can mark the lines where
++# we want errors/warnings.
++#
++
++load_lib memstomp.exp
++set libmemstomp [find_libmemstomp]
++set libmemstomp_backtrace_symbols [find_libmemstomp_backtrace_symbols]
++
++if $tracelevel then {
++    strace $tracelevel
++}
++
++#
++# main test loop
++#
++
++proc compile-and-execute { sources } {
++  global libmemstomp
++  global libmemstomp_backtrace_symbols
++
++  set src [lindex $sources 0]
++
++  if {[catch {exec gcc -g -fno-builtin $src} results]} {
++    fail "$src compilation $results"
++  } else {
++    pass "$src compilation $results"
++  }
++
++  # ARM's unwinder seems broken
++  setup_xfail arm*-*-*
++  catch {exec /bin/bash -c "LD_PRELOAD=$libmemstomp:$libmemstomp_backtrace_symbols ./a.out"} results
++  if {[regexp "linenumber.c:8" $results]} {
++    pass "$src found overlap on right line $results"
++  } else {
++    fail "$src found overlap on right line $results"
++  }
++}
++
++foreach src [lsort [glob -nocomplain $srcdir/$subdir/*.c]] {
++    # If we're only testing specific files and this isn't one of them, skip it.
++    if ![runtest_file_p $runtests $src] then {
++        continue
++    }
++
++   compile-and-execute $src
++}
+diff -Nrup a/testsuite/memstomp.overlap/linenumber.c b/testsuite/memstomp.overlap/linenumber.c
+--- a/testsuite/memstomp.overlap/linenumber.c	1969-12-31 17:00:00.000000000 -0700
++++ b/testsuite/memstomp.overlap/linenumber.c	2014-08-26 13:17:30.057090085 -0600
+@@ -0,0 +1,23 @@
++#define __NO_STRING_INLINES
++#include <string.h>
++
++void
++something (void)
++{
++  char a[20] = "     hello";
++  memcpy (a, a + 5, 6);
++}
++
++void
++nothing (void)
++{
++  something ();
++}
++
++int
++main (void)
++{
++  nothing ();
++  return 0;
++}
++
